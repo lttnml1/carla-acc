@@ -18,14 +18,13 @@ import carla
 
 import random
 import time
-import rtamt
+import rtamt	
 import math
 
-"""
+REQUIREMENT = "R" # set the requirement to be checked by the monitor
+
 # rtamt Monitor for a pair of vehicles
 class Monitor:
-
-    REQUIREMENT = "R" # set the requirement to be checked by the monitor
 
     # initializer
     def __init__(self, rearVehicle, frontVehicle):
@@ -144,7 +143,6 @@ class Monitor:
         self.events.append(event)
 
 
-
 # controls all the monitors and creates new ones if needed
 class MonitorsController:
 
@@ -159,12 +157,17 @@ class MonitorsController:
 
     # register a new obstacle event
     def register_obstacle(self, obstacle_detect):
+        #print("Obstacle registered!!!")
         frontVehicle = obstacle_detect.other_actor
+        
         # only interested if the obstacle is a vehicle
         if not (frontVehicle.type_id.startswith('vehicle.')):
             return
-        rearVehicle = self.sensorDic.get(obstacle_detect.actor.id)
+        #rearVehicle = self.sensorDic.get(obstacle_detect.actor.id)
+        rearVehicle = obstacle_detect.actor.parent
 
+        #print("Front vehicle:" + str(frontVehicle.id) + "   Rear vehicle:" + str(rearVehicle.id))
+    
         # if rearVehicle already exists in the follow dictionary then register the event to the according monitor
         if rearVehicle.id in self.follow and self.follow.get(rearVehicle.id)['frontVehicle'] == frontVehicle.id:
             self.follow.get(rearVehicle.id)['monitorR1'].register_event(obstacle_detect.distance, obstacle_detect.timestamp)
@@ -173,7 +176,6 @@ class MonitorsController:
             monitorR1 = Monitor(rearVehicle, frontVehicle)
             self.follow[rearVehicle.id] = {'frontVehicle': frontVehicle.id, 'monitorR1': monitorR1}
             monitorR1.register_event(obstacle_detect.distance, obstacle_detect.timestamp)
-
 
     # check all the new events of every monitor
     # called n every step of the simulation
@@ -193,11 +195,14 @@ class MonitorsController:
             SDs = monitor.SDs
             robs = monitor.robs
 
+            print(len(distances))
+            print(len(SDs))
+            print(len(robs))
+
             with open(fileString, "w") as f:
                 f.write("Distance,SD,RobustnessR1\n")
-                for i in range(len(accFs)):
+                for i in range(len(distances)):
                     f.write("%f,%f,%f\n" % (distances[i],SDs[i],robs[i]))
-"""
 
 def main():
     actor_list = []
@@ -227,7 +232,7 @@ def main():
 
         world.set_weather(weather)
 
-        #monitorsCtrl = MonitorsController()
+        monitorsCtrl = MonitorsController()
 
         # Spawn the cars
         transform = world.get_map().get_spawn_points()[0]
@@ -248,9 +253,12 @@ def main():
                 vehicle.set_autopilot(True)
                 vehicle.set_acc(True)
 
-                # Add sensor.other.collision
+                # Add sensor.other.obstacle
                 sensor_bp = blueprint_library.find('sensor.other.obstacle')
+
+                #'distance = 200' is the distance the sensor looks out to    
                 sensor_bp.set_attribute('distance', '200')
+                #only looks for moving objects
                 sensor_bp.set_attribute('only_dynamics', 'true')
                 # if it equals fixed_delta_seconds then sensor ticks every tick of the world. Increase to sample
                 sensor_bp.set_attribute('sensor_tick', '0.05')
@@ -261,14 +269,14 @@ def main():
                 sensorDic.update( {sensor.id : vehicle} )
 
                 # Register the listener that will be called for each sensor tick
-                #sensor.listen(lambda obstacle_detect: monitorsCtrl.register_obstacle(obstacle_detect))
+                sensor.listen(lambda obstacle_detect: monitorsCtrl.register_obstacle(obstacle_detect))
 
-        #monitorsCtrl.setSensorDictionary(sensorDic)
+        monitorsCtrl.setSensorDictionary(sensorDic)
         print('vehicles spawned, press Ctrl+C to exit.')
 
         while True:
             world.tick()
-            #monitorsCtrl.check_monitors()
+            monitorsCtrl.check_monitors()
 
     finally:
 
@@ -276,7 +284,7 @@ def main():
         for actor in actor_list:
             actor.destroy()
 
-        #monitorsCtrl.writeFiles()
+        monitorsCtrl.writeFiles()
         settings.synchronous_mode = False
         settings.fixed_delta_seconds = None
         world.apply_settings(settings)
