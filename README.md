@@ -32,7 +32,9 @@ Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Server/CarlaServer.cpp
 Please use the CarlaServer.cpp located in the root folder and not the [enable-disable ACC] folder.
 
 I also found one more error in the Carla source code for the ObstacleDetectionSensor (always returned "50" for distance) so do this one as well:
+```bash
 Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Sensor/ObstacleDetectionSensor.cpp
+```
 
 If you have already built CARLA and wish to add this ACC extension, please replace the original CARLA files with the ones found in these two folders and build again the simulator and the Python API. 
 ```bash
