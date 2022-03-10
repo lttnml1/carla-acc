@@ -5,7 +5,7 @@ Please note - most of this code was taken from Eleni Zapridou's github page http
 CARLA: 0.9.6
 UnrealEngine: 4.22
 OS: Ubuntu 18.04
-Python: 3.6
+Python: 2.7 (due to the requirement currently to run the 0.0.9 version of rtamt)
 
 # Adaptive Cruise Control System (ACC) in the [CARLA Simulator](https://carla.readthedocs.io/en/latest/)
 This repository contains the files that were extended in the CARLA Simulator in order to implement an ACC system. This system was used to experiment with the runtime verification approach proposed in "Runtime Verification of Autonomous Driving Systems in CARLA" (published in [RV2020](https://rv20.ait.ac.at/) by E. Zapridou, E. Bartocci, P. Katsaros).
@@ -31,6 +31,9 @@ Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Server/CarlaServer.cpp
 ```
 Please use the CarlaServer.cpp located in the root folder and not the [enable-disable ACC] folder.
 
+I also found one more error in the Carla source code for the ObstacleDetectionSensor (always returned "50" for distance) so do this one as well:
+Unreal/CarlaUE4/Plugins/Carla/Source/Carla/Sensor/ObstacleDetectionSensor.cpp
+
 If you have already built CARLA and wish to add this ACC extension, please replace the original CARLA files with the ones found in these two folders and build again the simulator and the Python API. 
 ```bash
 make PythonAPI
@@ -38,4 +41,4 @@ make launch
 ```
 
 ## Python Script
-The script "acc_runtime_monitoring.py" is used to implement the rtamt library in order to monitor the ACC system in runtime. The requirement to be checked by the monitor is set as a constant inside the script.
+The script "acc_runtime_monitoring.py" is used to implement the rtamt library in order to monitor the ACC system in runtime. The requirement to be checked by the monitor is set as a constant inside the script (i.e., R, R1 or R2).  Currently this uses rtamt 0.0.9 (pip install real-time-analog-monitoring-tool==0.0.9) which is only compatible with Python 2, hence the reason for using Ubuntu 18.04 which still includes Python 2.7.17 by default.
