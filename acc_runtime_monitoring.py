@@ -15,11 +15,12 @@ except IndexError:
     pass
 
 import carla
-
 import random
 import time
 import rtamt	
 import math
+
+from datetime import datetime
 
 REQUIREMENT = "R" # set the requirement to be checked by the monitor
 
@@ -117,6 +118,8 @@ class Monitor:
             timestamp = event['timestamp']
 
             trafficR = vehicleR.is_at_traffic_light()
+	    if(trafficR):
+		print("Rear Vehicle ID: " + str(vehicleR.id) + " is at a traffic light")
 
             rob = self.spec.update(timestamp, [('dist', dist), ('SD', SD), ('accF', accF), ('accR', accR), ('vF', speedF_m_s), ('vR', speedR_m_s), ('trafficLightR', trafficR)])
 
@@ -207,6 +210,9 @@ class MonitorsController:
 def main():
     actor_list = []
     sensorDic = {} #dictionary {sensor: vehicle}
+    
+    time_str = datetime.now().strftime("%Y_%m_%d-%I_%M_%S_%p")
+    recorder_filename = "CARLA_recording_" + time_str
 
     try:
         # Set the client
@@ -220,10 +226,10 @@ def main():
         settings.synchronous_mode = True
         settings.fixed_delta_seconds = 0.05
         world.apply_settings(settings)
-
-        # Set weather
+ 
         blueprint_library = world.get_blueprint_library()
-
+	
+	# Set weather
         weather = carla.WeatherParameters(
             cloudyness=1.0,
             sun_azimuth_angle=180.0,
@@ -233,6 +239,9 @@ def main():
         world.set_weather(weather)
 
         monitorsCtrl = MonitorsController()
+
+        client.start_recorder(recorder_filename)
+        car_to_follow = 0;
 
         # Spawn the cars
         transform = world.get_map().get_spawn_points()[0]
@@ -245,11 +254,14 @@ def main():
 
             if (i>0):
                 transform.location.x -= 20.0
+
             vehicle = world.try_spawn_actor(bp, transform)
 
             if vehicle is not None:
                 actor_list.append(vehicle)
                 print('created {} {}'.format(vehicle.type_id, vehicle.id))
+                if(vehicle.type_id == 'vehicle.audi.tt'):
+                    car_to_follow = vehicle.id
                 vehicle.set_autopilot(True)
                 vehicle.set_acc(True)
 
@@ -270,6 +282,7 @@ def main():
 
                 # Register the listener that will be called for each sensor tick
                 sensor.listen(lambda obstacle_detect: monitorsCtrl.register_obstacle(obstacle_detect))
+                
 
         monitorsCtrl.setSensorDictionary(sensorDic)
         print('vehicles spawned, press Ctrl+C to exit.')
@@ -288,8 +301,13 @@ def main():
         settings.synchronous_mode = False
         settings.fixed_delta_seconds = None
         world.apply_settings(settings)
-        print('done.')
 
+        client.stop_recorder()
+	#this gets saved at ~/carla_0.9.6/Unreal/CarlaUE4/Saved
+        print('done, replaying last 10 seconds of file, following: ' + str(car_to_follow))
+        client.set_replayer_time_factor(1.0)
+        client.replay_file(recorder_filename, -10, 10, car_to_follow)
+        print('done replaying file.')
 
 if __name__ == '__main__':
 
